@@ -1,1 +1,11 @@
-# hey hey ehy
+
+
+
+
+## import
+from Bio import SeqIO
+
+##constance
+
+
+def
