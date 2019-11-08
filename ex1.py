@@ -3,7 +3,7 @@
 
 
 ## import
-from Bio import SeqIO
+#from Bio import SeqIO
 import numpy as np
 
 ##constance
@@ -11,6 +11,7 @@ ORIGIN = 1
 SCORE = 0
 SCORE_AND_ORIGIN = 2
 GAP = '-'
+PRINT_LEN = 50
 GET_SCORE = lambda x, y: scoring_dict[ord(x) + ord(y)]
 
 
@@ -50,7 +51,7 @@ class Alignment:
         """
         gets the origin to know the alignment for printing
         """
-        return self.__score
+        return self.__mother
 
     def get_index(self):
         """
@@ -65,7 +66,7 @@ class Alignment:
         return self.__score
 
     def __repr__(self):
-        return str(self.__score)
+        return str(self.__score) +" " + str(self.__mother)
 
 
 def readfasta(fastaFile):
@@ -101,12 +102,12 @@ def globalScore(seq_one, seq_two, scoring_dict):
     matrix = init_matrix(seq_one, seq_two, scoring_dict)
     for i in range(1, len(seq_one) + 1):
         for j in range(1, len(seq_two) + 1):
-            matrix[i][j].set_index = (i, j)
+            matrix[i][j].set_index((i, j))
             alignment_tup = get_best_alligment(matrix, (i, j), scoring_dict, seq_one, seq_two)
             matrix[i][j].set_score(alignment_tup[SCORE])
             matrix[i][j].set_mother(alignment_tup[ORIGIN])
 
-    print(matrix)
+    return matrix
 
 
 
@@ -117,14 +118,20 @@ def init_matrix(seq_one, seq_two, scoring_dict):
     # todo put it in a tuple so we know its the begining
     matrix = [[Alignment() for i in range(len(seq_two) + 1)]
               for j in range((len(seq_one) + 1))]
-        # np.empty((len(seq_two) + 1, len(seq_one) + 1), dtype=Alignment())
+
+
     #initilaize matrix
+    matrix[0][0].set_index((0, 0))
     for i in range(1, len(matrix[0])):
-        gap_score = GET_SCORE(GAP, seq_one[i - 1])
+        gap_score = GET_SCORE(GAP, seq_two[i - 1])
         matrix[0][i].set_score(matrix[0][i - 1].get_score() + gap_score)
-    for i in range(1, len(seq_two) + 1):
-        gap_score = GET_SCORE(seq_two[i - 1], GAP)
+        matrix[0][i].set_index((0, i))
+
+
+    for i in range(1, len(seq_one) + 1):
+        gap_score = GET_SCORE(seq_one[i - 1], GAP)
         matrix[i][0].set_score(matrix[i - 1][0].get_score() + gap_score)
+        matrix[i][0].set_index((i, 0))
     return matrix
 
 def get_best_alligment(matrix, cur_idx, scoring_dict, seq_one, seq_two):
@@ -143,6 +150,38 @@ def get_best_alligment(matrix, cur_idx, scoring_dict, seq_one, seq_two):
     return max_score, options_dict[max_score]
 
 
+def print_max_alignment(matrix, seq_one, seq_two):
+    seq_one_alig = list()
+    seq_two_alig = list()
+    cur = matrix[len(seq_one)][len(seq_two)]
+    while cur is not None:
+        mother = matrix[cur.get_mother()[0]][cur.get_mother()[1]]
+        mother_x = mother.get_index()[0]
+        mother_y = mother.get_index()[1]
+        if cur.get_index()[0] != mother_x and cur.get_index()[1] != mother_y:
+            seq_one_alig.append(seq_one[cur.get_index()[0] - 1])
+            seq_two_alig.append(seq_two[cur.get_index()[1] - 1])
+        elif cur.get_index()[0] == mother_x and cur.get_index()[1] != mother_y:
+            seq_one_alig.append(seq_one[cur.get_index()[0] - 1])
+            seq_two_alig.append(seq_two[cur.get_index()[1] - 1])
+            seq_one_alig.append(GAP)
+            seq_two_alig.append(get_next_base(cur, mother, seq_two))
+        else:
+            seq_one_alig.append(seq_one[cur.get_index()[0] - 1])
+            seq_two_alig.append(seq_two[cur.get_index()[1] - 1])
+            seq_two_alig.append(GAP)
+        cur = mother if cur.get_mother()[0] and cur.get_mother()[1] else None
+
+    seq_one_alig.reverse()
+    seq_two_alig.reverse()
+
+    chunks_one = [seq_one_alig[x: x + PRINT_LEN] for x in range(0, len(seq_one_alig), PRINT_LEN)]
+    chunks_two = [seq_two_alig[x: x + PRINT_LEN] for x in range(0, len(seq_two_alig), PRINT_LEN)]
+    for i in range(len(chunks_one)):
+        print(chunks_one[i])
+        print(chunks_two[i])
+        print ('\n')
+
 
 
 if __name__ == '__main__':
@@ -150,5 +189,6 @@ if __name__ == '__main__':
     # readfasta("/cs/usr/toozig/year3/Cbio/cBIOEX1/fastas/HelicoverpaArmigera-cMyc.fasta")
     a = 'AGCT'
     b = 'GCT'
-    globalScore(a,b, scoring_dict)
+    matrix = globalScore(a, b, scoring_dict)
+    print_max_alignment(matrix, a, b)
 
