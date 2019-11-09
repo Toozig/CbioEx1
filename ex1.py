@@ -205,12 +205,20 @@ def print_global_alignment(ali_seq1, ali_seq2):
         print(to_print, end="")
         if not counter - 1:
             print()
-            if is_seq1:
-                idx += saved_counter - 1
-            else:
-                print()
             is_seq1 = not is_seq1
-            continue
+            if not is_seq1:
+                idx += saved_counter - 1
+                counter += saved_counter - 1
+                continue
+            else:
+                if idx > PRINT_LEN:
+                    saved_counter = PRINT_LEN - 1
+                    counter = PRINT_LEN
+                else:
+                    saved_counter = idx - 1
+                    counter = idx
+                print()
+
         counter -= 1
         idx -= 1
 
@@ -245,10 +253,10 @@ def print_global_alignment(ali_seq1, ali_seq2):
 if __name__ == '__main__':
     scoring_dict = createScoringDict("/cs/usr/toozig/year3/Cbio/cBIOEX1/score_matrix.tsv")
     # readfasta("/cs/usr/toozig/year3/Cbio/cBIOEX1/fastas/HelicoverpaArmigera-cMyc.fasta")
-    a = 'AGCT'
-    b = 'GCT'
+    a = 'CTACGACGCAAACGCACGTCCGCACGGACTCGCTGCCGCGCGTGCCGTCAGCGCAGGAGCGCCAGCACATCCAGCGCACTGTGGAGACCGCCATCACGCCGCGCTCGCCGCGCCCGGTGGCCAGGAAGCGCCTGGTACCGCCGCCCAGCATAGCGGCCGCGTCACGCCGCCGCGCTCGCGTGCCCGGCCGCCGTGGACGCCGCTCCAACACCGACACTGACTCCGGGGCCGAGTCGCCCGAGATAGAACGCCGCTCCATACACGACGACATGGAGAGACT'
+    b = 'CGCCGAGACATTTCACGCCGAGACATTTCACGCCGAGACATTTCACGCCGAGACATTTCA'
     matrix = globalScore(a, b, scoring_dict)
-    for i in matrix:
-        print(i)
+    # for i in matrix:
+    #     print(i)
     seq1, seq2 = restore_alignment(matrix[len(b)][len(a)], a, b)
     print_global_alignment(seq1, seq2)
