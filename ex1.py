@@ -307,14 +307,14 @@ def print_global_alignment(alignment, seq_one, seq_two):
         idx -= 1
 
 
-
-if __name__ == '__main__':
-    scoring_dict = createScoringDict("/cs/usr/toozig/year3/Cbio/cBIOEX1/score_matrix.tsv")
-    # readfasta("/cs/usr/toozig/year3/Cbio/cBIOEX1/fastas/HelicoverpaArmigera-cMyc.fasta")
-    a = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGTCTACGACGCAAACGCACGTCCGCACGGACTCGCTGCCGCGCGT'
-    b = 'CTACGACGCAAACGCACGTCCGCACGGACTCGCTGCCGCGCGTCTACGACGCAAACGCACGTCCGCACGGACTCGCTGCCGCGCGTGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG'
-    matrixx = globalScore(a, b, scoring_dict, 'overlap')
-    # print(matrixx)
-    print_global_alignment(matrixx, a,b)
-    # seq1111, seq1112 = restore_alignment(matrix[len(b)][len(a)], a, b)
-    # print_global_alignment(seq1, seq2)
+#
+# if __name__ == '__main__':
+#     scoring_dict = createScoringDict("/cs/usr/toozig/year3/Cbio/cBIOEX1/score_matrix.tsv")
+#     # readfasta("/cs/usr/toozig/year3/Cbio/cBIOEX1/fastas/HelicoverpaArmigera-cMyc.fasta")
+#     a = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGTCTACGACGCAAACGCACGTCCGCACGGACTCGCTGCCGCGCGT'
+#     b = 'CTACGACGCAAACGCACGTCCGCACGGACTCGCTGCCGCGCGTCTACGACGCAAACGCACGTCCGCACGGACTCGCTGCCGCGCGTGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG'
+#     matrixx = globalScore(a, b, scoring_dict, 'overlap')
+#     # print(matrixx)
+#     print_global_alignment(matrixx, a,b)
+#     # seq1111, seq1112 = restore_alignment(matrix[len(b)][len(a)], a, b)
+#     # print_global_alignment(seq1, seq2)
