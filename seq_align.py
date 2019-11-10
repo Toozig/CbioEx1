@@ -203,7 +203,7 @@ def printGlobalScore(alignment):
     print(alignment.get_score())
 
 
-#### new function from ido
+#### new function from ido todo
 
 def create_alignment(gap_score, mother_option, alignment_type, x_idx, y_idx, origin):
     """
@@ -213,14 +213,12 @@ def create_alignment(gap_score, mother_option, alignment_type, x_idx, y_idx, ori
     score = 0 if not mother or not alignment_type - OVERLAP else mother.get_score() + gap_score
     return Alignment(mother, (x_idx, y_idx), score, origin)
 
-
 def init_array(seq_two, scoring_dict, alignment_type):
     alignment_list = [Alignment(None, (0, 0), 0)]
 
     for i in range(len(seq_two)):
         gap_score = GET_SCORE(GAP, seq_two[i], scoring_dict)
         alignment_list.append(create_alignment(gap_score, alignment_list[-1], alignment_type,0, i, LEFT))
-    print(alignment_list)
     return alignment_list
 
 def new_get_best_alligment(left_score, upper_score, diag_score, seq_one_base, seq_two_base, scoring_dict):
@@ -255,7 +253,6 @@ def fill_sec_arr(cur_arr, cur_base, scoring_dict, alignment_type, cur_x, seq_one
         else:
             mother = alignment_list[-1]
         alignment_list.append(Alignment(mother, (i, cur_x), max_score, origin))
-    print(alignment_list)
     return alignment_list
 
 
@@ -335,7 +332,7 @@ def new_print_global_alignment(alignment, seq_one, seq_two):
         counter -= 1
         idx -= 1
 
-################# end of ido func
+################# end of ido func todo
 
 def init_matrix(seq_one, seq_two, scoring_dict, alignment_type):
     """
@@ -507,6 +504,6 @@ if __name__ == '__main__':
     # x = sys.argv[1]
     # main()
     scoring_dict = createScoringDict("score_matrix.tsv")
-    a = 'AGCT'
-    b = 'GCT'
-    new_print_global_alignment(get_best_alignment(a, b, scoring_dict,0),a,b)
+    a = 'CCTCGCTGCTGGTGTGCCCCGGACTGGCCTGTGGGCCCGGCAGGGGGTTTGGAAAGAGG'
+    b = 'CCTCGCTGCTGGTCCCGGCAGGGGGTTTGGAAAGAGG'
+    new_print_global_alignment(get_best_alignment(a, b, scoring_dict,OVERLAP),a,b)
