@@ -3,7 +3,8 @@ import argparse
 import sys
 import numpy as np
 from itertools import groupby
-from Bio import SeqIO
+
+# from Bio import SeqIO
 
 # constant s
 UPPER = 1
@@ -28,7 +29,7 @@ class Alignment:
      Holds the information for each cell in the alignment matrix
      """
 
-    def __init__(self, mother=None, index=None, score=0, origin =None):
+    def __init__(self, mother=None, index=None, score=0, origin=None):
         """
         Ctor for the Class
         """
@@ -75,8 +76,7 @@ class Alignment:
         return self.score
 
     def __repr__(self):
-        idx = '^_^' if not self.mother else self.mother.get_index()
-        return str(self.score) + " " +"("+ str(idx)+')'
+        return str(self.score) + " " + "(" + str(self.index) + ')'
 
 
 def readfasta(fastaFile):
@@ -184,7 +184,8 @@ def check_local(i, j, mother, score, seq_one, seq_two, scoring_dict):
     """
     helper for the local alignment scoring
     """
-    start_here_score = GET_SCORE(seq_one[j - 1], seq_two[i - 1], scoring_dict) #todo check what todo if negative
+    start_here_score = GET_SCORE(seq_one[j - 1], seq_two[i - 1],
+                                 scoring_dict)  # todo check what todo if negative
     start_here_score = start_here_score if start_here_score > 0 else 0
     if start_here_score > score:
         score = start_here_score
@@ -213,25 +214,45 @@ def create_alignment(gap_score, mother_option, alignment_type, x_idx, y_idx, ori
     score = 0 if not mother or not alignment_type - OVERLAP else mother.get_score() + gap_score
     return Alignment(mother, (x_idx, y_idx), score, origin)
 
-def init_array(seq_two, scoring_dict, alignment_type):
+
+def init_array(seq_one, scoring_dict, alignment_type):
     alignment_list = [Alignment(None, (0, 0), 0)]
 
-    for i in range(len(seq_two)):
-        gap_score = GET_SCORE(GAP, seq_two[i], scoring_dict)
-        alignment_list.append(create_alignment(gap_score, alignment_list[-1], alignment_type,0, i, LEFT))
+    for i in range(len(seq_one)):
+        gap_score = GET_SCORE(GAP, seq_one[i], scoring_dict)
+        alignment_list.append(create_alignment(gap_score, alignment_list[-1], alignment_type, i + 1, 0, LEFT))
+    print(alignment_list)
     return alignment_list
 
-def new_get_best_alligment(left_score, upper_score, diag_score, seq_one_base, seq_two_base, scoring_dict):
+
+def new_get_best_allig(left_score, upper_score, diag_score, seq_one_base, seq_two_base, scoring_dict,
+                       align_type, diag_mom, upper_mom, left_mom, index):
     """
     evaluates the value for this index best alligment
     """
+    max_score, origin = get_score_and_origin(diag_score, left_score, scoring_dict, seq_one_base, seq_two_base,
+                                             upper_score)
+    if (not align_type - LOCAL) and max_score < 0:
+        max_score = 0
+        mother = None
+        origin = None
+    else:
+        if not origin:
+            mother = diag_mom
+        elif not (UPPER - origin):
+            mother = upper_mom
+        else:
+            mother = left_mom
+    return Alignment(mother, index, max_score, origin)
+
+
+def get_score_and_origin(diag_score, left_score, scoring_dict, seq_one_base, seq_two_base, upper_score):
     gap_reduction_left = GET_SCORE(seq_two_base, GAP, scoring_dict)
-    gap_reduction_up = GET_SCORE(GAP,seq_one_base, scoring_dict)
+    gap_reduction_up = GET_SCORE(GAP, seq_one_base, scoring_dict)
     pair_score = GET_SCORE(seq_two_base, seq_one_base, scoring_dict)
     left_score = left_score + gap_reduction_left
     up_score = upper_score + gap_reduction_up
     diagonal_score = diag_score + pair_score
-
     options_dict = {diagonal_score: DIAGONAL,
                     left_score: LEFT,
                     up_score: UPPER}
@@ -240,44 +261,46 @@ def new_get_best_alligment(left_score, upper_score, diag_score, seq_one_base, se
     return max_score, origin
 
 
-def fill_sec_arr(cur_arr, cur_base, scoring_dict, alignment_type, cur_x, seq_two, len_seq_one):
-    gap_score = GET_SCORE(GAP, cur_base, scoring_dict)
-    alignment_list = [create_alignment(gap_score, cur_arr[0], alignment_type, 0, cur_x, UPPER)]
-    max_alignment = None
-    for i in range(len(seq_two)):
-        max_score , origin = new_get_best_alligment(alignment_list[-1].get_score(), cur_arr[i + 1].get_score(),
-                                                    cur_arr[i].get_score(), seq_two[i], cur_base, scoring_dict)
-        if not origin:
-            mother = cur_arr[i]
-        elif not (UPPER - origin):
-            mother = cur_arr[i + 1]
-        else:
-            mother = alignment_list[-1]
-        alignment = Alignment(mother, (i, cur_x), max_score, origin)
-        alignment_list.append(alignment)
-        if alignment_type:
-            is_bound = (not i + 1 - len(seq_two) or not cur_x + 1 - len_seq_one)
-            if not alignment_type - OVERLAP and is_bound:
-                max_alignment = alignment if not max_alignment or max_score > max_alignment.score else max_alignment
-            elif not alignment_type - LOCAL:
-                max_alignment = alignment if not max_alignment or max_score > max_alignment.score else max_alignment
+def create_first_alignment(alignment_type, gap_score, mother):
+    score = gap_score
+    if not alignment_type:
+        score = gap_score if gap_score > 0 else 0
+        return Alignment(mother, None, score, mother)
+    alignment = Alignment(mother, None, score, mother)
+    return alignment
 
-    return alignment_list, max_alignment
+
+def fill_sec_arr(cur_arr, cur_base, scoring_dict, align_type, cur_x, seq_one, len_seq_two):
+    gap_score = GET_SCORE(GAP, cur_base, scoring_dict)
+    alignment_list = [create_alignment(gap_score, cur_arr[0], align_type, 0, cur_x, UPPER)]
+    max_align = None
+    # alignment_list.append(create_first_alignment(alignment_type, gap_score, cur_arr[0]))
+    for i in range(1, len(seq_one)+1):
+        alignment = new_get_best_allig(alignment_list[-1].score, cur_arr[i].score,
+                                       cur_arr[i - 1].score, seq_one[i-1], cur_base, scoring_dict,align_type,
+                                       cur_arr[i - 1], cur_arr[i], alignment_list[-1], (i, cur_x))
+        alignment_list.append(alignment)
+        if align_type:
+            is_bound = not i - len(seq_one)
+            if not align_type - OVERLAP and is_bound:
+                max_align = alignment if not max_align or alignment.score > max_align.score else max_align
+            elif not align_type - LOCAL:
+                max_align = alignment if not max_align or alignment.score > max_align.score else max_align
+    print(alignment_list)
+    return alignment_list, max_align
 
 
 def new_get_best_alignment(seq_one, seq_two, scoring_dict, alignment_type):
-
-    cur_arr = init_array(seq_two, scoring_dict, alignment_type)
+    cur_arr = init_array(seq_one, scoring_dict, alignment_type)
     max_alignment = None
-    len_seq_one = len(seq_one)
-    for i in range(len(seq_one)):
-        cur_arr, temp_max_alignment = fill_sec_arr(cur_arr, seq_one[i], scoring_dict,
-                                                   alignment_type, i, seq_two, len_seq_one)
-        if  alignment_type:
+    for i in range(len(seq_two)):
+        cur_arr, temp_max_alignment = fill_sec_arr(cur_arr, seq_two[i], scoring_dict,
+                                                   alignment_type, i + 1, seq_one, len(seq_two))
+        if alignment_type:
             max_alignment = temp_max_alignment if not max_alignment or max_alignment.score < temp_max_alignment.score \
                 else max_alignment
-    return cur_arr[-1] if not max_alignment else new_get_result(seq_one, seq_two, max_alignment, alignment_type)
-
+    return cur_arr[-1] if not max_alignment else new_get_result(seq_one, seq_two, max_alignment,
+                                                                alignment_type)
 
 
 def new_get_result(seq_one, seq_two, max_score, alignment_type):
@@ -301,12 +324,13 @@ def new_get_result(seq_one, seq_two, max_score, alignment_type):
     score = max_score.score
     last_idx_sum = len(seq_one) + len(seq_two)
     while sum(cur.index) < last_idx_sum - INDEX_REDUCTION:
-        (new_i, new_j)= cur.index
+        (new_i, new_j) = cur.index
         new_i += add_i
         new_j += add_j
         temp = cur
         cur = Alignment(temp, (new_i, new_j), score, origin)
     return cur
+
 
 def new_restore_alignment(alignment, seq_one, seq_two):
     """
@@ -322,17 +346,16 @@ def new_restore_alignment(alignment, seq_one, seq_two):
     cur = alignment
     while cur.mother is not None:
         mother = cur.mother
-        cur_idx = cur.index
+        cur_x, cur_y = cur.index
         pre_idx = mother.index
-        direction = (cur_idx[0] - pre_idx[0]) - (cur_idx[1] - pre_idx[1])
         if not cur.origin:
-            ali_seq1 += seq_one[cur_idx[1]]
-            ali_seq2 += seq_two[cur_idx[0]]
-        elif cur.origin < 0:
+            ali_seq1 += seq_one[cur_x - 1]
+            ali_seq2 += seq_two[cur_y - 1]
+        elif cur.origin > 0:
             ali_seq1 += GAP
-            ali_seq2 += seq_two[cur_idx[0]]
+            ali_seq2 += seq_two[cur_y -1]
         else:
-            ali_seq1 += seq_one[cur_idx[1]]
+            ali_seq1 += seq_one[cur_x - 1]
             ali_seq2 += GAP
         cur = mother
 
@@ -354,7 +377,7 @@ def new_print_global_alignment(alignment, seq_one, seq_two):
     saved_counter = counter
     idx = len(ali_seq2)
     while idx:
-        to_print = ali_seq1[idx-1] if is_seq1 else ali_seq2[idx-1]
+        to_print = ali_seq1[idx - 1] if is_seq1 else ali_seq2[idx - 1]
         print(to_print, end="")
         if not counter - 1:
             print()
@@ -374,6 +397,7 @@ def new_print_global_alignment(alignment, seq_one, seq_two):
 
         counter -= 1
         idx -= 1
+
 
 ################# end of ido func todo
 
@@ -403,6 +427,7 @@ def init_matrix(seq_one, seq_two, scoring_dict, alignment_type):
         matrix[i][0].set_score(score)
     return matrix
 
+
 def decide_score(gap_score, mother, alignment_type):
     """
     decides the score for the initiating objects
@@ -410,6 +435,7 @@ def decide_score(gap_score, mother, alignment_type):
     if not mother or alignment_type == 'overlap':
         return 0
     return mother.get_score() + gap_score
+
 
 def decide_mother(gap_score, alignment_type):
     """
@@ -421,7 +447,6 @@ def decide_mother(gap_score, alignment_type):
         return False
     else:
         return True
-
 
 
 def get_best_alligment(matrix, cur_idx, scoring_dict, seq_one, seq_two):
@@ -489,7 +514,7 @@ def print_global_alignment(alignment, seq_one, seq_two):
     saved_counter = counter
     idx = len(ali_seq2)
     while idx:
-        to_print = ali_seq1[idx-1] if is_seq1 else ali_seq2[idx-1]
+        to_print = ali_seq1[idx - 1] if is_seq1 else ali_seq2[idx - 1]
         print(to_print, end="")
         if not counter - 1:
             print()
@@ -511,7 +536,6 @@ def print_global_alignment(alignment, seq_one, seq_two):
         idx -= 1
 
 
-
 def main():
     """
     This main function parses the args from the command, and prints the score and alignment for the
@@ -522,22 +546,32 @@ def main():
     parser.add_argument('seq_a', help='Path to first FASTA file (e.g. fastas/HomoSapiens-SHH.fasta)')
     parser.add_argument('seq_b', help='Path to second FASTA file')
     parser.add_argument('--align_type', help='Alignment type (e.g. local)', required=True)
-    parser.add_argument('--score', help='Score matrix in.tsv format (default is score_matrix.tsv) ', default='score_matrix.tsv')
+    parser.add_argument('--score', help='Score matrix in.tsv format (default is score_matrix.tsv) ',
+                        default='score_matrix.tsv')
     command_args = parser.parse_args()
     scoring_dict = createScoringDict(command_args.score)
     seq_one = readfasta(command_args.seq_a)
     seq_two = readfasta(command_args.seq_b)
+    type = None
+    if command_args.align_type == "global":
+        type = 0
+    elif command_args.align_type == "local":
+        type = 1
+    else:
+        type = -1
+    alignment = new_get_best_alignment(seq_one, seq_two, scoring_dict, type)
+    printGlobalScore(alignment)
+    new_print_global_alignment(alignment, seq_one, seq_two)
     # if command_args.align_type == 'global':
     #     raise NotImplementedError
     # elif command_args.align_type == 'local':
     #     raise NotImplementedError
     # elif command_args.align_type == 'overlap':
     #     raise NotImplementedError
-    alignment = calc_score(seq_one, seq_two, scoring_dict, command_args.align_type)
-#    print_global_alignment(alignment, seq_one, seq_two)
-    printGlobalScore(alignment)
+    # alignment = calc_score(seq_one, seq_two, scoring_dict, command_args.align_type)
+    #    print_global_alignment(alignment, seq_one, seq_two)
+    # printGlobalScore(alignment)
     # print the best alignment and score
-
 
 
 if __name__ == '__main__':
@@ -546,7 +580,9 @@ if __name__ == '__main__':
     """
     # x = sys.argv[1]
     # main()
-    scoring_dict = createScoringDict("score_matrix.tsv")
-    a = 'CCTCGCTGCTGGTGTGC'
-    b = 'CGCT'
-    new_print_global_alignment(new_get_best_alignment(a, b, scoring_dict,OVERLAP),a,b)
+    sscoring_dict = createScoringDict("score_matrix.tsv")
+    a = 'AAAAAAAGCT'
+    b = 'GCTAAAAA'
+    aalignment = new_get_best_alignment(a, b, sscoring_dict, OVERLAP)
+    printGlobalScore(aalignment)
+    new_print_global_alignment(aalignment,a, b)
