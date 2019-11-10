@@ -256,9 +256,10 @@ def fill_sec_arr(cur_arr, cur_base, scoring_dict, alignment_type, cur_x, seq_two
         alignment = Alignment(mother, (i, cur_x), max_score, origin)
         alignment_list.append(alignment)
         if alignment_type:
-            if not alignment_type - OVERLAP and not(i + 1 - len(seq_two) and cur_x + 1 - len_seq_one):
+            is_bound = (not i + 1 - len(seq_two) or not cur_x + 1 - len_seq_one)
+            if not alignment_type - OVERLAP and is_bound:
                 max_alignment = alignment if not max_alignment or max_score > max_alignment.score else max_alignment
-            else:
+            elif not alignment_type - LOCAL:
                 max_alignment = alignment if not max_alignment or max_score > max_alignment.score else max_alignment
 
     return alignment_list, max_alignment
@@ -290,7 +291,7 @@ def new_get_result(seq_one, seq_two, max_score, alignment_type):
     if not alignment_type - LOCAL:
         return max_score
     i, j = max_score.get_index()
-    if not i - len(seq_two):
+    if i - len(seq_two):
         add_i, add_j = 0, 1
         origin = UPPER
     else:
@@ -299,7 +300,7 @@ def new_get_result(seq_one, seq_two, max_score, alignment_type):
     cur = max_score
     score = max_score.score
     last_idx_sum = len(seq_one) + len(seq_two)
-    while sum(cur.index) != len(seq_one) + len(seq_two): # might needed  "- INDEX_REDUCTION"
+    while sum(cur.index) < last_idx_sum - INDEX_REDUCTION:
         (new_i, new_j)= cur.index
         new_i += add_i
         new_j += add_j
@@ -548,4 +549,4 @@ if __name__ == '__main__':
     scoring_dict = createScoringDict("score_matrix.tsv")
     a = 'CCTCGCTGCTGGTGTGC'
     b = 'CGCT'
-    new_print_global_alignment(new_get_best_alignment(a, b, scoring_dict,LOCAL),a,b)
+    new_print_global_alignment(new_get_best_alignment(a, b, scoring_dict,OVERLAP),a,b)
