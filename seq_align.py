@@ -144,7 +144,7 @@ def calc_score(seq_one, seq_two, scoring_dict, alignment_type):
 
 def get_result(matrix, max_score, alignment_type):
     """
-    This function
+    This function is for the overlap scoring
     :param matrix:
     :param max_score:
     :param alignment_type:
@@ -240,30 +240,72 @@ def new_get_best_alligment(left_score, upper_score, diag_score, seq_one_base, se
     return max_score, origin
 
 
-def fill_sec_arr(cur_arr, cur_base, scoring_dict, alignment_type, cur_x, seq_one):
+def fill_sec_arr(cur_arr, cur_base, scoring_dict, alignment_type, cur_x, seq_two, len_seq_one):
     gap_score = GET_SCORE(GAP, cur_base, scoring_dict)
     alignment_list = [create_alignment(gap_score, cur_arr[0], alignment_type, 0, cur_x, UPPER)]
-    for i in range(len(seq_one)):
+    max_alignment = None
+    for i in range(len(seq_two)):
         max_score , origin = new_get_best_alligment(alignment_list[-1].get_score(), cur_arr[i + 1].get_score(),
-                                                    cur_arr[i].get_score(), seq_one[i], cur_base, scoring_dict)
+                                                    cur_arr[i].get_score(), seq_two[i], cur_base, scoring_dict)
         if not origin:
             mother = cur_arr[i]
         elif not (UPPER - origin):
             mother = cur_arr[i + 1]
         else:
             mother = alignment_list[-1]
-        alignment_list.append(Alignment(mother, (i, cur_x), max_score, origin))
-    return alignment_list
+        alignment = Alignment(mother, (i, cur_x), max_score, origin)
+        alignment_list.append(alignment)
+        if alignment_type:
+            if not alignment_type - OVERLAP and not(i + 1 - len(seq_two) and cur_x + 1 - len_seq_one):
+                max_alignment = alignment if not max_alignment or max_score > max_alignment.score else max_alignment
+            else:
+                max_alignment = alignment if not max_alignment or max_score > max_alignment.score else max_alignment
+
+    return alignment_list, max_alignment
 
 
-def get_best_alignment(seq_one, seq_two, scoring_dict, alignment_type):
+def new_get_best_alignment(seq_one, seq_two, scoring_dict, alignment_type):
 
     cur_arr = init_array(seq_two, scoring_dict, alignment_type)
+    max_alignment = None
+    len_seq_one = len(seq_one)
     for i in range(len(seq_one)):
-        cur_arr = fill_sec_arr(cur_arr, seq_one[i], scoring_dict, alignment_type, i, seq_two)
-    return cur_arr[-1]
+        cur_arr, temp_max_alignment = fill_sec_arr(cur_arr, seq_one[i], scoring_dict,
+                                                   alignment_type, i, seq_two, len_seq_one)
+        if  alignment_type:
+            max_alignment = temp_max_alignment if not max_alignment or max_alignment.score < temp_max_alignment.score \
+                else max_alignment
+    return cur_arr[-1] if not max_alignment else new_get_result(seq_one, seq_two, max_alignment, alignment_type)
 
 
+
+def new_get_result(seq_one, seq_two, max_score, alignment_type):
+    """
+    This function is for the overlap scoring
+    :param matrix:
+    :param max_score:
+    :param alignment_type:
+    :return:
+    """
+    if not alignment_type - LOCAL:
+        return max_score
+    i, j = max_score.get_index()
+    if not i - len(seq_two):
+        add_i, add_j = 0, 1
+        origin = UPPER
+    else:
+        add_i, add_j = 1, 0
+        origin = LEFT
+    cur = max_score
+    score = max_score.score
+    last_idx_sum = len(seq_one) + len(seq_two)
+    while sum(cur.index) != len(seq_one) + len(seq_two): # might needed  "- INDEX_REDUCTION"
+        (new_i, new_j)= cur.index
+        new_i += add_i
+        new_j += add_j
+        temp = cur
+        cur = Alignment(temp, (new_i, new_j), score, origin)
+    return cur
 
 def new_restore_alignment(alignment, seq_one, seq_two):
     """
@@ -504,6 +546,6 @@ if __name__ == '__main__':
     # x = sys.argv[1]
     # main()
     scoring_dict = createScoringDict("score_matrix.tsv")
-    a = 'CCTCGCTGCTGGTGTGCCCCGGACTGGCCTGTGGGCCCGGCAGGGGGTTTGGAAAGAGG'
-    b = 'CCTCGCTGCTGGTCCCGGCAGGGGGTTTGGAAAGAGG'
-    new_print_global_alignment(get_best_alignment(a, b, scoring_dict,OVERLAP),a,b)
+    a = 'CCTCGCTGCTGGTGTGC'
+    b = 'CGCT'
+    new_print_global_alignment(new_get_best_alignment(a, b, scoring_dict,LOCAL),a,b)
